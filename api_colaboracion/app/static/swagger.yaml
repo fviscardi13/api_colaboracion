@@ -10,10 +10,7 @@ info:
     name: Equipo de Desarrollo
     email: equipo@colaboracion.org
 
-host: localhost:5000
 basePath: /api
-schemes:
-  - http
 
 securityDefinitions:
   BearerAuth:
@@ -148,7 +145,7 @@ paths:
               msg:
                 type: string
                 example: No existe un proyecto con ID 999.
-                
+
   /compromisos/:
     get:
       security:
@@ -224,9 +221,9 @@ paths:
               msg:
                 type: string
                 example: No existe un pedido de colaboración con ID 999
-                
+
   /compromisos/{id}/cumplido:
-    patch:           
+    patch:
       security:
         - BearerAuth: []
       tags:

@@ -21,6 +21,15 @@ def ensure_postgres_ready():
     admin_pass = os.getenv("POSTGRES_ADMIN_PASS", "postgres")
     print(f"🔧 Verificando base '{dbname}' y usuario '{user}'...")
 
+    # Evitar crear usuarios/databases automáticamente en bases de datos remotas gestionadas
+    # (p. ej. Render, Heroku) donde no tienes credenciales de superusuario o se requiere SSL.
+    # Permite forzar el salto con la variable SKIP_DB_INIT=true.
+    skip_init = os.getenv("SKIP_DB_INIT", "").lower() in ("1", "true", "yes")
+    local_hosts = ("localhost", "127.0.0.1", "::1", "db_api")
+    if skip_init or host not in local_hosts:
+        print(f"⚠️  Saltando inicialización automática de la base de datos (host='{host}', SKIP_DB_INIT={skip_init}).")
+        return
+
     admin_conn = psycopg2.connect(
         dbname="postgres",
         user=admin_user,
