@@ -13,6 +13,7 @@ def init_app(app):
 
         print("Cargando datos de prueba...")
 
+        # Crear ONGs
         ong1 = ONG(
             name="ONG AyudaTotal",
             email="ayudatotal@ong.com",
@@ -27,10 +28,10 @@ def init_app(app):
         )
         ong2.set_password("abcd")
 
-
         db.session.add_all([ong1, ong2])
         db.session.commit()
 
+        # Crear Proyectos
         proyecto1 = Project(
             ong_id=ong1.id,
             name="Proyecto Salud",
@@ -49,9 +50,19 @@ def init_app(app):
             neighborhood="Recoleta"
         )
 
-        db.session.add_all([proyecto1, proyecto2])
+        proyecto3 = Project(
+            ong_id=ong1.id,
+            name="Proyecto Inclusión",
+            description="Capacitación en oficios para jóvenes",
+            type="educación",
+            country="Argentina",
+            neighborhood="Caballito"
+        )
+
+        db.session.add_all([proyecto1, proyecto2, proyecto3])
         db.session.commit()
 
+        # Crear pedidos de colaboración (solo para proyectos 1 y 2)
         pedido1 = Request(
             project_id=proyecto1.id,
             ong_id=ong1.id,
@@ -67,7 +78,6 @@ def init_app(app):
             description="Necesitamos libros y mochilas para 50 chicos",
             amount=2000
         )
-
 
         db.session.add_all([pedido1, pedido2])
         db.session.commit()

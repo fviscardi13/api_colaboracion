@@ -2,8 +2,9 @@ swagger: "2.0"
 info:
   title: API Colaboración ONG
   description: >
-    API para gestionar proyectos de colaboración entre ONGs y pedidos asociados.
-    Incluye autenticación JWT, gestión de proyectos, pedidos y compromisos.
+    API para gestionar la colaboración entre ONGs mediante pedidos y compromisos.
+    Incluye autenticación JWT, registro de pedidos, consulta de pedidos no asignados
+    y registro de compromisos de ayuda.
   version: "1.0.0"
   contact:
     name: Equipo de Desarrollo
@@ -13,20 +14,20 @@ host: localhost:5000
 basePath: /api
 schemes:
   - http
+
 securityDefinitions:
   BearerAuth:
     type: apiKey
     name: Authorization
     in: header
     description: "Token JWT en formato: Bearer {token}"
+
 security:
   - BearerAuth: []
 
 tags:
   - name: Autenticación
     description: Obtener token JWT
-  - name: Proyectos
-    description: Operaciones sobre proyectos
   - name: Pedidos
     description: Operaciones sobre pedidos de colaboración
   - name: Compromisos
@@ -64,64 +65,8 @@ paths:
               access_token:
                 type: string
                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-        400:
-          description: Faltan parámetros obligatorios (email, password, bonita_user)
         401:
           description: Credenciales inválidas
-
-  /proyectos/:
-    get:
-      security:
-        - BearerAuth: []
-      tags:
-        - Proyectos
-      summary: Listar todos los proyectos
-      responses:
-        200:
-          description: Lista de proyectos
-          schema:
-            type: array
-            items:
-              type: object
-              properties:
-                id: { type: integer }
-                name: { type: string }
-                description: { type: string }
-                type: { type: string }
-                country: { type: string }
-                neighborhood: { type: string }
-    post:
-      security:
-        - BearerAuth: []
-      tags:
-        - Proyectos
-      summary: Crear un nuevo proyecto
-      parameters:
-        - in: body
-          name: body
-          required: true
-          schema:
-            type: object
-            required: [name, description, type, country, neighborhood]
-            properties:
-              name:
-                type: string
-                example: Proyecto Inclusión Digital
-              description:
-                type: string
-                example: Capacitación en herramientas informáticas
-              type:
-                type: string
-                example: educación
-              country:
-                type: string
-                example: Argentina
-              neighborhood:
-                type: string
-                example: Caballito
-      responses:
-        201:
-          description: Proyecto creado correctamente
 
   /pedidos/:
     get:
@@ -150,7 +95,11 @@ paths:
         - BearerAuth: []
       tags:
         - Pedidos
-      summary: Crear un nuevo pedido de colaboración
+      summary: Crear un nuevo pedido de colaboración para un proyecto
+      description: >
+        Crea un pedido de colaboración vinculado a un proyecto específico.  
+        Cada proyecto puede tener **un solo pedido asociado**.  
+        Si el proyecto no existe o ya tiene un pedido, se devuelve un error.
       parameters:
         - in: body
           name: body
@@ -161,7 +110,7 @@ paths:
             properties:
               project_id:
                 type: integer
-                example: 1
+                example: 3
               type:
                 type: string
                 example: materiales
@@ -174,50 +123,32 @@ paths:
       responses:
         201:
           description: Pedido creado correctamente
-
-  /pedidos/proyecto/{project_id}/no-asignados:
-    get:
-      security:
-        - BearerAuth: []
-      tags:
-        - Pedidos
-      summary: Obtener pedidos no asignados de un proyecto específico
-      parameters:
-        - name: project_id
-          in: path
-          required: true
-          type: integer
-          example: 1
-      responses:
-        200:
-          description: Lista de pedidos no asignados
           schema:
-            type: array
-            items:
-              type: object
-              properties:
-                id: { type: integer }
-                type: { type: string }
-                description: { type: string }
-                amount: { type: number }
-
-  /pedidos/{id}/terminar:
-    patch:
-      security:
-        - BearerAuth: []
-      tags:
-        - Pedidos
-      summary: Marcar un pedido como terminado
-      parameters:
-        - name: id
-          in: path
-          required: true
-          type: integer
-          example: 1
-      responses:
-        200:
-          description: Pedido marcado como terminado
-
+            type: object
+            properties:
+              msg:
+                type: string
+                example: Pedido de colaboración creado correctamente
+              id:
+                type: integer
+                example: 10
+        400:
+          description: Error en la solicitud (proyecto ya tiene un pedido o falta 'project_id')
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: El proyecto con ID 1 ya tiene un pedido de colaboración asignado.
+        404:
+          description: Proyecto no encontrado
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: No existe un proyecto con ID 999.
+                
   /compromisos/:
     get:
       security:
@@ -244,6 +175,10 @@ paths:
       tags:
         - Compromisos
       summary: Crear un nuevo compromiso (una ONG se compromete con un pedido)
+      description: >
+        Registra un compromiso de una ONG con un pedido específico.  
+        Cada pedido puede tener **un solo compromiso registrado**.  
+        El compromiso se crea con estado aceptado automáticamente.
       parameters:
         - in: body
           name: body
@@ -263,15 +198,44 @@ paths:
                 example: Donación de materiales
       responses:
         201:
-          description: Compromiso creado correctamente
-
+          description: Compromiso registrado correctamente
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: Compromiso registrado correctamente
+              id:
+                type: integer
+                example: 5
+        400:
+          description: Ya existe un compromiso para este pedido
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: El pedido con ID 1 ya tiene un compromiso registrado.
+        404:
+          description: Pedido no encontrado
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: No existe un pedido de colaboración con ID 999
+                
   /compromisos/{id}/cumplido:
-    patch:
+    patch:           
       security:
         - BearerAuth: []
       tags:
         - Compromisos
       summary: Marcar un compromiso como cumplido
+      description: >
+        Marca como cumplido un compromiso existente.  
+        - Devuelve 404 si el compromiso no existe.  
+        - Devuelve 400 si el compromiso ya estaba cumplido.
       parameters:
         - name: id
           in: path
@@ -281,10 +245,25 @@ paths:
       responses:
         200:
           description: Compromiso marcado como cumplido
-
-securityDefinitions:
-  BearerAuth:
-    type: apiKey
-    name: Authorization
-    in: header
-    description: "Token JWT en formato: Bearer {token}"
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: Compromiso marcado como cumplido
+        400:
+          description: Compromiso ya cumplido
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: El compromiso con ID 1 ya está marcado como cumplido
+        404:
+          description: Compromiso no encontrado
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: No existe un compromiso con ID 1
