@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flasgger import Swagger
-from .database import db
+from .database import db, init_database
 from .jwt_auth import init_jwt
 from app.routes.project_routes import projects_bp
 from app.routes.request_routes import request_bp
@@ -23,7 +23,7 @@ def create_app():
     ])
     CORS(app, resources={r"/*": {"origins": "*"}})
 
-    db.init_app(app)
+    init_database(app)
     init_jwt(app)
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")

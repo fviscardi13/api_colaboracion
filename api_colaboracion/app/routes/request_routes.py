@@ -3,6 +3,7 @@ from app.database import db
 from app.models.request_model import Request
 from flask_jwt_extended import jwt_required
 from app.jwt_auth import bonita_required
+from flask_jwt_extended import get_jwt
 
 request_bp = Blueprint("requests", __name__)
 
@@ -26,15 +27,23 @@ def get_requests():
 @bonita_required
 def create_request():
     data = request.get_json()
+    claims = get_jwt()
+    ong_id = claims.get("ong_id")
+
+    if not ong_id:
+        return jsonify({"msg": "Token no contiene 'ong_id'. Autenticación de ONG requerida."}), 400
+
     new_req = Request(
         project_id=data["project_id"],
+        ong_id=ong_id,
         type=data["type"],
         description=data.get("description"),
         amount=data.get("amount")
     )
+
     db.session.add(new_req)
     db.session.commit()
-    return jsonify({"msg": "Pedido de cobertura creado", "id": new_req.id}), 201
+    return jsonify({"msg": "Pedido de colaboración creado", "id": new_req.id}), 201
 
 @request_bp.route("/proyecto/<int:project_id>/no-asignados", methods=["GET"])
 @jwt_required()
