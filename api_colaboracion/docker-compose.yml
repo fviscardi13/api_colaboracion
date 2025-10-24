@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  db_api:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: api_user
+      POSTGRES_PASSWORD: api_password
+      POSTGRES_DB: colaboracion_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata_api:/var/lib/postgresql/data
+
+    api_colaboracion:
+    build: .
+    ports:
+      - "5001:5000"
+    environment:
+      DATABASE_URL: postgresql://api_user:api_password@db_api:5432/colaboracion_db
+      SECRET_KEY: api_secret
+      JWT_SECRET_KEY: super_secret_jwt_key_here
+      BONITA_BASE_URL: http://bonita:8080
+      BONITA_USER: walter.bates
+      BONITA_PASS: bpm
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+    depends_on:
+      - db_api
+
+volumes:
+  pgdata_api:

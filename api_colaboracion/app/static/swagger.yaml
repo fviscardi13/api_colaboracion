@@ -1,0 +1,290 @@
+swagger: "2.0"
+info:
+  title: API Colaboración ONG
+  description: >
+    API para gestionar proyectos de colaboración entre ONGs y pedidos asociados.
+    Incluye autenticación JWT, gestión de proyectos, pedidos y compromisos.
+  version: "1.0.0"
+  contact:
+    name: Equipo de Desarrollo
+    email: equipo@colaboracion.org
+
+host: localhost:5000
+basePath: /api
+schemes:
+  - http
+securityDefinitions:
+  BearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: "Token JWT en formato: Bearer {token}"
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Autenticación
+    description: Obtener token JWT
+  - name: Proyectos
+    description: Operaciones sobre proyectos
+  - name: Pedidos
+    description: Operaciones sobre pedidos de colaboración
+  - name: Compromisos
+    description: Operaciones sobre compromisos de ONGs
+
+paths:
+  /auth/token:
+    post:
+      tags:
+        - Autenticación
+      summary: Obtener token JWT para autenticación
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [email, password, bonita_user]
+            properties:
+              email:
+                type: string
+                example: ayudatotal@ong.com
+              password:
+                type: string
+                example: "1234"
+              bonita_user:
+                type: string
+                example: walter.bates
+      responses:
+        200:
+          description: Token JWT generado
+          schema:
+            type: object
+            properties:
+              access_token:
+                type: string
+                example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        400:
+          description: Faltan parámetros obligatorios (email, password, bonita_user)
+        401:
+          description: Credenciales inválidas
+
+  /proyectos/:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - Proyectos
+      summary: Listar todos los proyectos
+      responses:
+        200:
+          description: Lista de proyectos
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id: { type: integer }
+                name: { type: string }
+                description: { type: string }
+                type: { type: string }
+                country: { type: string }
+                neighborhood: { type: string }
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - Proyectos
+      summary: Crear un nuevo proyecto
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [name, description, type, country, neighborhood]
+            properties:
+              name:
+                type: string
+                example: Proyecto Inclusión Digital
+              description:
+                type: string
+                example: Capacitación en herramientas informáticas
+              type:
+                type: string
+                example: educación
+              country:
+                type: string
+                example: Argentina
+              neighborhood:
+                type: string
+                example: Caballito
+      responses:
+        201:
+          description: Proyecto creado correctamente
+
+  /pedidos/:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - Pedidos
+      summary: Listar todos los pedidos de colaboración
+      responses:
+        200:
+          description: Lista de pedidos
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id: { type: integer }
+                type: { type: string }
+                description: { type: string }
+                project_id: { type: integer }
+                amount: { type: number }
+                assigned: { type: boolean }
+                completed: { type: boolean }
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - Pedidos
+      summary: Crear un nuevo pedido de colaboración
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [project_id, type]
+            properties:
+              project_id:
+                type: integer
+                example: 1
+              type:
+                type: string
+                example: materiales
+              description:
+                type: string
+                example: Solicitan alimentos no perecederos
+              amount:
+                type: number
+                example: 5000
+      responses:
+        201:
+          description: Pedido creado correctamente
+
+  /pedidos/proyecto/{project_id}/no-asignados:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - Pedidos
+      summary: Obtener pedidos no asignados de un proyecto específico
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          type: integer
+          example: 1
+      responses:
+        200:
+          description: Lista de pedidos no asignados
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id: { type: integer }
+                type: { type: string }
+                description: { type: string }
+                amount: { type: number }
+
+  /pedidos/{id}/terminar:
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - Pedidos
+      summary: Marcar un pedido como terminado
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          example: 1
+      responses:
+        200:
+          description: Pedido marcado como terminado
+
+  /compromisos/:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - Compromisos
+      summary: Listar todos los compromisos registrados
+      responses:
+        200:
+          description: Lista de compromisos
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id: { type: integer }
+                request_id: { type: integer }
+                ong_name: { type: string }
+                help_type: { type: string }
+                fulfilled: { type: boolean }
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - Compromisos
+      summary: Crear un nuevo compromiso (una ONG se compromete con un pedido)
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [request_id, ong_name, help_type]
+            properties:
+              request_id:
+                type: integer
+                example: 1
+              ong_name:
+                type: string
+                example: ONG Futuro
+              help_type:
+                type: string
+                example: Donación de materiales
+      responses:
+        201:
+          description: Compromiso creado correctamente
+
+  /compromisos/{id}/cumplido:
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - Compromisos
+      summary: Marcar un compromiso como cumplido
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          example: 1
+      responses:
+        200:
+          description: Compromiso marcado como cumplido
+
+securityDefinitions:
+  BearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: "Token JWT en formato: Bearer {token}"
