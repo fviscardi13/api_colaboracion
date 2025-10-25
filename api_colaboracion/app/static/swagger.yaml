@@ -69,27 +69,6 @@ paths:
           description: Credenciales inválidas
 
   /pedidos/:
-    get:
-      security:
-        - BearerAuth: []
-      tags:
-        - Pedidos
-      summary: Listar todos los pedidos de colaboración
-      responses:
-        200:
-          description: Lista de pedidos
-          schema:
-            type: array
-            items:
-              type: object
-              properties:
-                id: { type: integer }
-                type: { type: string }
-                description: { type: string }
-                project_id: { type: integer }
-                amount: { type: number }
-                assigned: { type: boolean }
-                completed: { type: boolean }
     post:
       security:
         - BearerAuth: []
@@ -128,7 +107,7 @@ paths:
             properties:
               msg:
                 type: string
-                example: Pedido de colaboración creado correctamente
+                example: Pedido de colaboración creado correctamente para el proyecto 3.
               id:
                 type: integer
                 example: 10
@@ -147,8 +126,64 @@ paths:
             properties:
               msg:
                 type: string
-                example: No existe un proyecto con ID 999.
-                
+                example: No existe un proyecto con ID 999
+
+  /pedidos/proyecto/{project_id}/no-asignados:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - Pedidos
+      summary: Obtener los pedidos de colaboración no asignados de un proyecto
+      description: >
+        Devuelve los pedidos de colaboración que existen para un proyecto específico y que **no han sido asignados**.  
+        Casos posibles:
+        - Si el proyecto no existe, devuelve 404.
+        - Si el proyecto existe pero no tiene pedidos, devuelve un mensaje indicando que no hay pedidos.
+        - Si el proyecto tiene pedidos asignados, devuelve un mensaje indicando que no hay pedidos no asignados.
+        - Si hay pedidos no asignados, devuelve la lista con los datos de cada pedido.
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          type: integer
+          example: 3
+          description: ID del proyecto del cual se quieren consultar los pedidos no asignados.
+      responses:
+        200:
+          description: Lista de pedidos no asignados o mensaje aclaratorio si no hay ninguno
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: Pedidos no asignados del proyecto 3
+              requests:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 7
+                    type:
+                      type: string
+                      example: materiales
+                    description:
+                      type: string
+                      example: Solicitan materiales para construcción
+                    amount:
+                      type: number
+                      example: 5000
+        404:
+          description: Proyecto no encontrado
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: No existe un proyecto con ID 999
+
   /compromisos/:
     get:
       security:
@@ -158,17 +193,24 @@ paths:
       summary: Listar todos los compromisos registrados
       responses:
         200:
-          description: Lista de compromisos
+          description: Lista de compromisos o mensaje si no hay ninguno
           schema:
-            type: array
-            items:
-              type: object
-              properties:
-                id: { type: integer }
-                request_id: { type: integer }
-                ong_name: { type: string }
-                help_type: { type: string }
-                fulfilled: { type: boolean }
+            type: object
+            properties:
+              msg:
+                type: string
+                example: No hay compromisos registrados actualmente.
+              commitments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: integer }
+                    request_id: { type: integer }
+                    ong_name: { type: string }
+                    help_type: { type: string }
+                    fulfilled: { type: boolean }
+
     post:
       security:
         - BearerAuth: []
@@ -178,7 +220,7 @@ paths:
       description: >
         Registra un compromiso de una ONG con un pedido específico.  
         Cada pedido puede tener **un solo compromiso registrado**.  
-        El compromiso se crea con estado aceptado automáticamente.
+        Si el pedido no existe o ya tiene un compromiso, devuelve un error.
       parameters:
         - in: body
           name: body
@@ -224,7 +266,7 @@ paths:
               msg:
                 type: string
                 example: No existe un pedido de colaboración con ID 999
-                
+
   /compromisos/{id}/cumplido:
     patch:           
       security:

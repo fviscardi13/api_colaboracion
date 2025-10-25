@@ -8,21 +8,6 @@ from flask_jwt_extended import get_jwt
 
 request_bp = Blueprint("requests", __name__)
 
-@request_bp.route("/", methods=["GET"])
-@jwt_required()
-@bonita_required
-def get_requests():
-    reqs = Request.query.all()
-    return jsonify([{
-        "id": r.id,
-        "type": r.type,
-        "description": r.description,
-        "project_id": r.project_id,
-        "amount": r.amount,
-        "assigned": r.assigned,
-        "completed": r.completed
-    } for r in reqs])
-
 @request_bp.route("/", methods=["POST"])
 @jwt_required()
 @bonita_required
@@ -91,12 +76,3 @@ def get_unassigned_requests(project_id):
             "amount": r.amount
         } for r in reqs]
     }), 200
-
-@request_bp.route("/<int:id>/terminar", methods=["PATCH"])
-@jwt_required()
-@bonita_required
-def mark_request_done(id):
-    req = Request.query.get_or_404(id)
-    req.completed = True
-    db.session.commit()
-    return jsonify({"msg": "Pedido marcado como terminado"})
