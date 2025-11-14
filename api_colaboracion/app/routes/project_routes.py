@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, json, jsonify, request
 from app.database import db
 from app.models.project_model import Project, WorkPlan, EconomicPlan
 from flask_jwt_extended import jwt_required, get_jwt
@@ -28,9 +28,17 @@ def get_projects():
 @jwt_required()
 @bonita_required
 def create_project():
-    data = request.get_json()
+    raw = request.get_data(as_text=True)
+    try:
+        data = json.loads(raw)
+        if isinstance(data, str):
+            data = json.loads(data)
+    except:
+        data = request.get_json(force=True)
+
     claims = get_jwt()
     ong_id = claims.get("ong_id")
+
     if not ong_id:
         return jsonify({"msg": "Token no contiene 'ong_id'. Autenticación de ONG requerida."}), 400
 
@@ -45,4 +53,5 @@ def create_project():
     )
     db.session.add(project)
     db.session.commit()
+
     return jsonify({"msg": "Proyecto creado correctamente", "id": project.id}), 201
