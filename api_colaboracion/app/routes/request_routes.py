@@ -73,20 +73,21 @@ def create_request():
     if not ong_id:
         return jsonify({"msg": "Token no contiene 'ong_id'. Autenticación de ONG requerida."}), 400
 
-    # === CASO 1: Viene 'project_id' y se usa un proyecto existente ===
-    if "project_id" in data:
-        project = Project.query.get(data["project_id"])
-        if not project:
-            return jsonify({"msg": f"No existe un proyecto con ID {data['project_id']}."}), 404
-        project_id = project.id
-
-    # === CASO 2: Se envía TODO el proyecto dentro del payload ===
-    elif "project" in data:
+        # === PRIORIDAD: si viene un proyecto completo, se usa ese ===
+    if "project" in data:
         try:
             project_id = create_full_project(data["project"], ong_id)
         except Exception as e:
             db.session.rollback()
             return jsonify({"msg": f"Error creando proyecto completo: {str(e)}"}), 400
+
+    # === Si no vino proyecto completo, pero sí project_id ===
+    elif "project_id" in data:
+        project = Project.query.get(data["project_id"])
+        if not project:
+            return jsonify({"msg": f"No existe un proyecto con ID {data['project_id']}."}), 404
+        project_id = project.id
+
     else:
         return jsonify({"msg": "Debe enviarse 'project_id' o 'project'."}), 400
 
