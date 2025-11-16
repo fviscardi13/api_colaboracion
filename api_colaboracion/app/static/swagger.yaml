@@ -15,11 +15,7 @@ info:
     name: Equipo de Desarrollo
     email: equipo@colaboracion.org
 
-
-host: localhost:5000
 basePath: /api
-schemes:
-  - http
 
 securityDefinitions:
   BearerAuth:
@@ -38,9 +34,10 @@ tags:
     description: Operaciones sobre pedidos de colaboración
   - name: Compromisos
     description: Operaciones sobre compromisos de ONGs
+  - name: Proyectos
+    description: Operaciones sobre proyectos y sus planes (work/economic)
 
 paths:
-
   /auth/token:
     post:
       tags:
@@ -257,4 +254,222 @@ paths:
           example: 1
       responses:
         200:
-          description: OK
+          description: Compromiso marcado como cumplido
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: Compromiso marcado como cumplido
+        400:
+          description: Compromiso ya cumplido
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: El compromiso con ID 1 ya está marcado como cumplido
+        404:
+          description: Compromiso no encontrado
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: No existe un compromiso con ID 1
+
+  /pedidos/no-asignados:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - Pedidos
+      summary: Obtener todos los pedidos de colaboración no asignados
+      description: Devuelve todos los pedidos que no han sido asignados (campo `assigned` = false).
+      responses:
+        200:
+          description: Lista de pedidos no asignados
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: Pedidos no asignados
+              requests:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 1
+                    project_id:
+                      type: integer
+                      example: 1
+                    type:
+                      type: string
+                      example: materiales
+                    description:
+                      type: string
+                      example: Necesitamos insumos médicos básicos
+                    amount:
+                      type: number
+                      example: 5000
+
+  /proyectos/{project_id}/work-plans:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - Proyectos
+      summary: Listar planes de trabajo de un proyecto
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          type: integer
+          example: 1
+      responses:
+        200:
+          description: Lista de planes de trabajo
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 1
+                name:
+                  type: string
+                  example: Reparación de techos
+                start_date:
+                  type: string
+                  format: date
+                  example: 2025-11-20
+                end_date:
+                  type: string
+                  format: date
+                  example: 2025-12-20
+                status:
+                  type: string
+                  example: pendiente
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - Proyectos
+      summary: Crear un plan de trabajo para un proyecto
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          type: integer
+          example: 1
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [name, start_date, end_date]
+            properties:
+              name:
+                type: string
+                example: Reparación de techos
+              start_date:
+                type: string
+                format: date
+                example: 2025-11-20
+              end_date:
+                type: string
+                format: date
+                example: 2025-12-20
+              status:
+                type: string
+                example: pendiente
+      responses:
+        201:
+          description: Work plan creado
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: Work plan creado correctamente
+              id:
+                type: integer
+                example: 5
+
+  /proyectos/{project_id}/economic-plans:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - Proyectos
+      summary: Listar planes económicos de un proyecto
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          type: integer
+          example: 1
+      responses:
+        200:
+          description: Lista de planes económicos
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 1
+                type:
+                  type: string
+                  example: materiales
+                amount:
+                  type: number
+                  example: 1500.5
+                description:
+                  type: string
+                  example: Compra de tejas, clavos y herramientas
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - Proyectos
+      summary: Crear un plan económico para un proyecto
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          type: integer
+          example: 1
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [type, amount, description]
+            properties:
+              type:
+                type: string
+                example: materiales
+              amount:
+                type: number
+                example: 1500.5
+              description:
+                type: string
+                example: Compra de materiales
+      responses:
+        201:
+          description: Economic plan creado
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+                example: Economic plan creado correctamente
+              id:
+                type: integer
+                example: 4

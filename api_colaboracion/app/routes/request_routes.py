@@ -168,3 +168,27 @@ def get_unassigned_requests(project_id):
             "amount": r.amount
         } for r in reqs]
     }), 200
+
+## obtener todos los request sin asignar
+@request_bp.route("/no-asignados", methods=["GET"])
+@jwt_required()
+@bonita_required
+def get_all_unassigned_requests():
+    reqs = Request.query.filter_by(assigned=False).all()
+
+    if not reqs:
+        return jsonify({
+            "msg": "No hay pedidos no asignados.",
+            "requests": []
+        }), 200
+
+    return jsonify({
+        "msg": "Pedidos no asignados",
+        "requests": [{
+            "id": r.id,
+            "project_id": r.project_id,
+            "type": r.type,
+            "description": r.description,
+            "amount": r.amount
+        } for r in reqs]
+    }), 200
