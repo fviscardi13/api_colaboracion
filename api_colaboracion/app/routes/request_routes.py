@@ -73,36 +73,25 @@ def create_request():
     if not ong_id:
         return jsonify({"msg": "Token no contiene 'ong_id'. Autenticación de ONG requerida."}), 400
 
-        # === PRIORIDAD: si viene un proyecto completo, se usa ese ===
-    if "project" in data:
-        try:
-            project_id = create_full_project(data["project"], ong_id)
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"msg": f"Error creando proyecto completo: {str(e)}"}), 400
+    if "project" not in data:
+        return jsonify({"msg": "Debe enviarse un 'project' completo. Ya no se acepta 'project_id'."}), 400
 
-    # === Si no vino proyecto completo, pero sí project_id ===
-    elif "project_id" in data:
-        project = Project.query.get(data["project_id"])
-        if not project:
-            return jsonify({"msg": f"No existe un proyecto con ID {data['project_id']}."}), 404
-        project_id = project.id
+    try:
+        project_id = create_full_project(data["project"], ong_id)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"msg": f"Error creando proyecto completo: {str(e)}"}), 400
 
-    else:
-        return jsonify({"msg": "Debe enviarse 'project_id' o 'project'."}), 400
-
-    # Verificar si ya existe un pedido
     existing_request = Request.query.filter_by(project_id=project_id).first()
     if existing_request:
         return jsonify({
             "msg": f"El proyecto con ID {project_id} ya tiene un pedido asignado (ID: {existing_request.id})."
         }), 400
 
-    # Crear pedido
     new_req = Request(
         project_id=project_id,
         ong_id=ong_id,
-        type=data["type"],
+        type=data.get("type"),
         description=data.get("description"),
         amount=data.get("amount")
     )
@@ -111,7 +100,7 @@ def create_request():
     db.session.commit()
 
     return jsonify({
-        "msg": f"Pedido creado correctamente",
+        "msg": "Pedido creado correctamente",
         "id": new_req.id,
         "project_id": project_id
     }), 201

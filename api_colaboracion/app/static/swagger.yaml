@@ -3,9 +3,9 @@ info:
   title: API Colaboración ONG
   description: >
     API para gestionar la colaboración entre ONGs mediante pedidos y compromisos.
-    Incluye autenticación JWT, registro de pedidos, consulta de pedidos no asignados
-    y registro de compromisos de ayuda.
-  version: "1.0.0"
+    Incluye autenticación JWT, registro de proyectos completos con pedidos,
+    consulta de pedidos no asignados y registro de compromisos.
+  version: "1.0.1"
   contact:
     name: Equipo de Desarrollo
     email: equipo@colaboracion.org
@@ -61,7 +61,6 @@ paths:
             properties:
               access_token:
                 type: string
-                example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         401:
           description: Credenciales inválidas
 
@@ -71,59 +70,101 @@ paths:
         - BearerAuth: []
       tags:
         - Pedidos
-      summary: Crear un nuevo pedido de colaboración para un proyecto
+      summary: Crear un nuevo pedido de colaboración junto con un proyecto completo
       description: >
-        Crea un pedido de colaboración vinculado a un proyecto específico.  
-        Cada proyecto puede tener **un solo pedido asociado**.  
-        Si el proyecto no existe o ya tiene un pedido, se devuelve un error.
+        Crea un **proyecto completo** y automáticamente asocia un **pedido** a ese proyecto.  
+        Ya no se acepta `project_id`.  
+        Siempre se debe enviar el objeto `project` completo.
       parameters:
         - in: body
           name: body
           required: true
           schema:
             type: object
-            required: [project_id, type]
+            required: [project, type]
             properties:
-              project_id:
-                type: integer
-                example: 3
+              project:
+                type: object
+                description: Proyecto completo con planes incluidos.
+                required: [name, description, type, country, neighborhood]
+                properties:
+                  name:
+                    type: string
+                    example: Proyecto Solar
+                  description:
+                    type: string
+                    example: Instalación de paneles solares en escuelas rurales
+                  type:
+                    type: string
+                    example: materiales
+                  country:
+                    type: string
+                    example: Argentina
+                  neighborhood:
+                    type: string
+                    example: Palermo
+                  work_plans:
+                    type: array
+                    items:
+                      type: object
+                      required: [name, start_date, end_date]
+                      properties:
+                        name:
+                          type: string
+                          example: Instalación
+                        start_date:
+                          type: string
+                          example: 2025-01-01
+                        end_date:
+                          type: string
+                          example: 2025-01-20
+                  economic_plans:
+                    type: array
+                    items:
+                      type: object
+                      required: [type, amount, description]
+                      properties:
+                        type:
+                          type: string
+                          example: materiales
+                        amount:
+                          type: number
+                          example: 5000
+                        description:
+                          type: string
+                          example: Compra de paneles solares
               type:
                 type: string
+                description: Tipo de ayuda solicitada
                 example: materiales
               description:
                 type: string
-                example: Solicitan alimentos no perecederos
+                example: Solicitan materiales no perecederos
               amount:
                 type: number
                 example: 5000
       responses:
         201:
-          description: Pedido creado correctamente
+          description: Pedido y proyecto creados correctamente
           schema:
             type: object
             properties:
               msg:
                 type: string
-                example: Pedido de colaboración creado correctamente para el proyecto 3.
+                example: Pedido creado correctamente
               id:
+                type: integer
+                example: 1
+              project_id:
                 type: integer
                 example: 10
         400:
-          description: Error en la solicitud (proyecto ya tiene un pedido o falta 'project_id')
+          description: Error al crear el proyecto o pedido
           schema:
             type: object
             properties:
               msg:
                 type: string
-                example: El proyecto con ID 1 ya tiene un pedido de colaboración asignado.
-        404:
-          description: Proyecto no encontrado
-          schema:
-            type: object
-            properties:
-              msg:
-                type: string
-                example: No existe un proyecto con ID 999
 
   /pedidos/proyecto/{project_id}/no-asignados:
     get:
@@ -131,47 +172,32 @@ paths:
         - BearerAuth: []
       tags:
         - Pedidos
-      summary: Obtener los pedidos de colaboración no asignados de un proyecto
+      summary: Obtener los pedidos no asignados de un proyecto
       description: >
-        Devuelve los pedidos de colaboración que existen para un proyecto específico y que **no han sido asignados**.  
-        Casos posibles:
-        - Si el proyecto no existe, devuelve 404.
-        - Si el proyecto existe pero no tiene pedidos, devuelve un mensaje indicando que no hay pedidos.
-        - Si el proyecto tiene pedidos asignados, devuelve un mensaje indicando que no hay pedidos no asignados.
-        - Si hay pedidos no asignados, devuelve la lista con los datos de cada pedido.
+        Devuelve los pedidos de colaboración no asignados para un proyecto existente.
       parameters:
         - name: project_id
           in: path
           required: true
           type: integer
           example: 3
-          description: ID del proyecto del cual se quieren consultar los pedidos no asignados.
       responses:
         200:
-          description: Lista de pedidos no asignados o mensaje aclaratorio si no hay ninguno
+          description: Lista de pedidos no asignados
           schema:
             type: object
             properties:
               msg:
                 type: string
-                example: Pedidos no asignados del proyecto 3
               requests:
                 type: array
                 items:
                   type: object
                   properties:
-                    id:
-                      type: integer
-                      example: 7
-                    type:
-                      type: string
-                      example: materiales
-                    description:
-                      type: string
-                      example: Solicitan materiales para construcción
-                    amount:
-                      type: number
-                      example: 5000
+                    id: { type: integer }
+                    type: { type: string }
+                    description: { type: string }
+                    amount: { type: number }
         404:
           description: Proyecto no encontrado
           schema:
@@ -179,7 +205,6 @@ paths:
             properties:
               msg:
                 type: string
-                example: No existe un proyecto con ID 999
 
   /compromisos/:
     get:
@@ -190,13 +215,11 @@ paths:
       summary: Listar todos los compromisos registrados
       responses:
         200:
-          description: Lista de compromisos o mensaje si no hay ninguno
+          description: Lista de compromisos
           schema:
             type: object
             properties:
-              msg:
-                type: string
-                example: No hay compromisos registrados actualmente.
+              msg: { type: string }
               commitments:
                 type: array
                 items:
@@ -213,11 +236,7 @@ paths:
         - BearerAuth: []
       tags:
         - Compromisos
-      summary: Crear un nuevo compromiso (una ONG se compromete con un pedido)
-      description: >
-        Registra un compromiso de una ONG con un pedido específico.  
-        Cada pedido puede tener **un solo compromiso registrado**.  
-        Si el pedido no existe o ya tiene un compromiso, devuelve un error.
+      summary: Registrar un compromiso con un pedido
       parameters:
         - in: body
           name: body
@@ -231,38 +250,22 @@ paths:
                 example: 1
               ong_name:
                 type: string
-                example: ONG Futuro
+                example: ONG Esperanza
               help_type:
                 type: string
-                example: Donación de materiales
+                example: Donación de alimentos
       responses:
         201:
           description: Compromiso registrado correctamente
           schema:
             type: object
             properties:
-              msg:
-                type: string
-                example: Compromiso registrado correctamente
-              id:
-                type: integer
-                example: 5
+              msg: { type: string }
+              id: { type: integer }
         400:
-          description: Ya existe un compromiso para este pedido
-          schema:
-            type: object
-            properties:
-              msg:
-                type: string
-                example: El pedido con ID 1 ya tiene un compromiso registrado.
+          description: El pedido ya tiene un compromiso
         404:
           description: Pedido no encontrado
-          schema:
-            type: object
-            properties:
-              msg:
-                type: string
-                example: No existe un pedido de colaboración con ID 999
 
   /compromisos/{id}/cumplido:
     patch:
@@ -271,10 +274,6 @@ paths:
       tags:
         - Compromisos
       summary: Marcar un compromiso como cumplido
-      description: >
-        Marca como cumplido un compromiso existente.  
-        - Devuelve 404 si el compromiso no existe.  
-        - Devuelve 400 si el compromiso ya estaba cumplido.
       parameters:
         - name: id
           in: path
@@ -287,22 +286,8 @@ paths:
           schema:
             type: object
             properties:
-              msg:
-                type: string
-                example: Compromiso marcado como cumplido
+              msg: { type: string }
         400:
           description: Compromiso ya cumplido
-          schema:
-            type: object
-            properties:
-              msg:
-                type: string
-                example: El compromiso con ID 1 ya está marcado como cumplido
         404:
           description: Compromiso no encontrado
-          schema:
-            type: object
-            properties:
-              msg:
-                type: string
-                example: No existe un compromiso con ID 1
