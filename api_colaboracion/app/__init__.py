@@ -11,6 +11,7 @@ from app import seeds_data
 from flasgger import Swagger
 import yaml
 import os
+import click
 
 
 def create_app():
@@ -57,5 +58,31 @@ def create_app():
     @app.route("/")
     def home():
         return jsonify({"status": "ok", "message": "API Colaboración funcionando"})
+
+    @app.cli.command("reset-db")
+    @click.option('--yes', is_flag=True, help='Skip confirmation prompt')
+    def reset_db_cli(yes):
+        """Drop all tables, recreate them and load seeds_data.
+
+        Usage:
+          flask reset-db
+          flask reset-db --yes
+        """
+        if not yes:
+            confirm = click.confirm('This will DROP ALL TABLES and reload seeds. Continue?')
+            if not confirm:
+                click.echo('Aborted.')
+                return
+
+        click.echo('Resetting database...')
+        try:
+            with app.app_context():
+                db.drop_all()
+                db.create_all()
+                seeds_data.init_app(app)
+            click.echo('Database reset and seeds loaded successfully.')
+        except Exception as e:
+            click.echo(f'Error resetting database: {e}')
+            raise
 
     return app

@@ -5,6 +5,8 @@ from app.models.request_model import Request
 from flask_jwt_extended import jwt_required, get_jwt
 from app.jwt_auth import bonita_required
 import json
+from sqlalchemy.exc import SQLAlchemyError
+from flask import current_app
 
 request_bp = Blueprint("requests", __name__)
 
@@ -145,50 +147,79 @@ def create_request():
 @jwt_required()
 @bonita_required
 def get_unassigned_requests(project_id):
-    project = Project.query.get(project_id)
-    if not project:
-        return jsonify({
-            "msg": f"No existe un proyecto con ID {project_id}"
-        }), 404
+    try:
+        project = Project.query.get(project_id)
+        if not project:
+            return jsonify({"msg": f"No existe un proyecto con ID {project_id}"}), 404
 
-    reqs = Request.query.filter_by(project_id=project_id, assigned=False).all()
+        reqs = Request.query.filter_by(project_id=project_id, assigned=False).all()
 
-    if not reqs:
-        return jsonify({
-            "msg": "El proyecto existe pero no tiene pedidos no asignados.",
-            "requests": []
-        }), 200
+        if not reqs:
+            return jsonify({"msg": "El proyecto existe pero no tiene pedidos no asignados.", "requests": []}), 200
 
-    return jsonify({
-        "msg": f"Pedidos no asignados del proyecto {project_id}",
-        "requests": [{
-            "id": r.id,
-            "type": r.type,
-            "description": r.description,
-            "amount": r.amount
-        } for r in reqs]
-    }), 200
+        results = []
+        for r in reqs:
+            results.append({
+                "id": r.id,
+                "type": r.type,
+                "description": r.description,
+                "amount": float(r.amount) if r.amount is not None else None
+            })
+
+        return jsonify({"msg": f"Pedidos no asignados del proyecto {project_id}", "requests": results}), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"msg": f"Error al consultar pedidos no asignados: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"msg": f"Error interno: {str(e)}"}), 500
 
 ## obtener todos los request sin asignar
 @request_bp.route("/no-asignados", methods=["GET"])
 @jwt_required()
 @bonita_required
 def get_all_unassigned_requests():
-    reqs = Request.query.filter_by(assigned=False).all()
+    try:
+        reqs = Request.query.filter_by(assigned=False).all()
 
-    if not reqs:
-        return jsonify({
-            "msg": "No hay pedidos no asignados.",
-            "requests": []
-        }), 200
+        if not reqs:
+            return jsonify({"msg": "No hay pedidos no asignados.", "requests": []}), 200
 
-    return jsonify({
-        "msg": "Pedidos no asignados",
-        "requests": [{
-            "id": r.id,
-            "project_id": r.project_id,
-            "type": r.type,
-            "description": r.description,
-            "amount": r.amount
-        } for r in reqs]
-    }), 200
+        results = []
+        for r in reqs:
+            results.append({
+                "id": r.id,
+                "project_id": r.project_id,
+                "type": r.type,
+                "description": r.description,
+                "amount": float(r.amount) if r.amount is not None else None
+            })
+
+        return jsonify({"msg": "Pedidos no asignados", "requests": results}), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"msg": f"Error al consultar pedidos no asignados: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"msg": f"Error interno: {str(e)}"}), 500
+
+
+@request_bp.route("/reset-db", methods=["POST"])
+@jwt_required()
+@bonita_required
+def reset_database():
+    """Endpoint destructivo: borra todas las tablas, las vuelve a crear y carga los seeds.
+
+    Requiere autenticación. Usarlo sólo en entornos de desarrollo/test.
+    """
+    try:
+        # Eliminar y recrear tablas según modelos actuales
+        db.drop_all()
+        db.create_all()
+
+        # Cargar seeds desde app.seeds_data
+        from app import seeds_data
+        seeds_data.init_app(current_app)
+
+        return jsonify({"msg": "Base de datos reseteada y seeds cargados correctamente."}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"msg": f"Error reseteando la base de datos: {str(e)}"}), 500

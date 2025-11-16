@@ -68,7 +68,10 @@ def init_app(app):
             ong_id=ong1.id,
             type="materiales",
             description="Necesitamos insumos médicos básicos",
-            amount=5000
+            amount=5000,
+            wp_name="Insumos médicos",
+            wp_start_date="2025-11-01",
+            wp_end_date="2025-11-30"
         )
 
         pedido2 = Request(
@@ -76,7 +79,10 @@ def init_app(app):
             ong_id=ong2.id,
             type="materiales",
             description="Necesitamos libros y mochilas para 50 chicos",
-            amount=2000
+            amount=2000,
+            wp_name="Entrega de útiles",
+            wp_start_date="2025-12-01",
+            wp_end_date="2025-12-15"
         )
 
         db.session.add_all([pedido1, pedido2])
