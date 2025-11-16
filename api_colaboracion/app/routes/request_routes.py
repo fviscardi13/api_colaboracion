@@ -65,25 +65,19 @@ def create_request():
     if not ong_id:
         return jsonify({"msg": "Token no contiene 'ong_id'. Autenticación requerida."}), 400
 
-    # ----------------------------
-    # VALIDAR project_id enviado
-    # ----------------------------
     project_id = data.get("project_id")
     if project_id is None:
         return jsonify({"msg": "Debe enviarse 'project_id'."}), 400
 
-    # Si existe, error — BONITA manda project_id y debe ser único
     if Project.query.get(project_id):
         return jsonify({
             "msg": f"Ya existe un proyecto con ID {project_id}. No se pueden duplicar project_id."
         }), 400
 
-    # Debe venir el objeto project
     project_data = data.get("project")
     if not project_data:
         return jsonify({"msg": "Debe enviarse el objeto 'project'."}), 400
 
-    # Crear proyecto usando el project_id de Bonita
     project = Project(
         id=project_id,
         ong_id=ong_id,
@@ -96,7 +90,6 @@ def create_request():
     )
     db.session.add(project)
 
-    # Work Plans
     for wp in project_data.get("work_plans", []):
         db.session.add(WorkPlan(
             project_id=project_id,
@@ -106,7 +99,6 @@ def create_request():
             status="pendiente"
         ))
 
-    # Economic Plans
     for ep in project_data.get("economic_plans", []):
         db.session.add(EconomicPlan(
             project_id=project_id,
@@ -115,7 +107,6 @@ def create_request():
             description=ep["description"]
         ))
 
-    # Extraer el work_plan enviado dentro del objeto project
     wp_list = project_data.get("work_plans", [])
     wp_selected = wp_list[0] if wp_list else None
 
