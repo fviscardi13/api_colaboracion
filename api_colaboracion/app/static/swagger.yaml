@@ -1,23 +1,32 @@
 swagger: "2.0"
+
 info:
   title: API Colaboración ONG
   description: >
     API para gestionar la colaboración entre ONGs mediante pedidos y compromisos.
-    Incluye autenticación JWT, registro de proyectos completos con pedidos,
-    consulta de pedidos no asignados y registro de compromisos.
-  version: "1.0.1"
+    Ahora un pedido puede enviarse de dos formas:
+    1. Usando un project_id → Se utiliza un proyecto existente.
+    2. Enviando un project completo → Se crea un proyecto nuevo automáticamente.
+
+    Si el proyecto enviado contiene bonita_case_id, el sistema buscará un
+    proyecto existente con ese identificador para evitar duplicados.
+  version: "1.1.1"
   contact:
     name: Equipo de Desarrollo
     email: equipo@colaboracion.org
 
+
+host: localhost:5000
 basePath: /api
+schemes:
+  - http
 
 securityDefinitions:
   BearerAuth:
     type: apiKey
     name: Authorization
     in: header
-    description: "Token JWT en formato: Bearer {token}"
+    description: Token JWT en formato Bearer {token}
 
 security:
   - BearerAuth: []
@@ -31,6 +40,7 @@ tags:
     description: Operaciones sobre compromisos de ONGs
 
 paths:
+
   /auth/token:
     post:
       tags:
@@ -42,7 +52,10 @@ paths:
           required: true
           schema:
             type: object
-            required: [email, password, bonita_user]
+            required:
+              - email
+              - password
+              - bonita_user
             properties:
               email:
                 type: string
@@ -70,30 +83,42 @@ paths:
         - BearerAuth: []
       tags:
         - Pedidos
-      summary: Crear un nuevo pedido de colaboración junto con un proyecto completo
+      summary: Crear un nuevo pedido de colaboración
       description: >
-        Crea un **proyecto completo** y automáticamente asocia un **pedido** a ese proyecto.  
-        Ya no se acepta `project_id`.  
-        Siempre se debe enviar el objeto `project` completo.
+        Crea un pedido y lo asocia a un proyecto.
+
+        Formas válidas de enviar un pedido:
+
+        1. Usar proyecto existente → enviar project_id.
+        2. Crear proyecto nuevo → enviar project completo.
+
+        Si incluye bonita_case_id:
+          - Si existe → se reutiliza.
+          - Si no existe → se crea uno nuevo.
+
+        Regla: No se puede enviar project_id y project al mismo tiempo.
       parameters:
         - in: body
           name: body
           required: true
           schema:
             type: object
-            required: [project, type]
             properties:
+              project_id:
+                type: integer
+                example: 7
               project:
                 type: object
-                description: Proyecto completo con planes incluidos.
-                required: [name, description, type, country, neighborhood]
                 properties:
+                  bonita_case_id:
+                    type: string
+                    example: BONITA-CASE-12345
                   name:
                     type: string
                     example: Proyecto Solar
                   description:
                     type: string
-                    example: Instalación de paneles solares en escuelas rurales
+                    example: Instalación de paneles solares
                   type:
                     type: string
                     example: materiales
@@ -107,22 +132,20 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [name, start_date, end_date]
                       properties:
                         name:
                           type: string
                           example: Instalación
                         start_date:
                           type: string
-                          example: 2025-01-01
+                          example: "2025-01-01"
                         end_date:
                           type: string
-                          example: 2025-01-20
+                          example: "2025-01-20"
                   economic_plans:
                     type: array
                     items:
                       type: object
-                      required: [type, amount, description]
                       properties:
                         type:
                           type: string
@@ -135,7 +158,6 @@ paths:
                           example: Compra de paneles solares
               type:
                 type: string
-                description: Tipo de ayuda solicitada
                 example: materiales
               description:
                 type: string
@@ -145,21 +167,25 @@ paths:
                 example: 5000
       responses:
         201:
-          description: Pedido y proyecto creados correctamente
+          description: Pedido creado correctamente
           schema:
             type: object
             properties:
               msg:
                 type: string
-                example: Pedido creado correctamente
               id:
                 type: integer
-                example: 1
               project_id:
                 type: integer
-                example: 10
         400:
-          description: Error al crear el proyecto o pedido
+          description: Error general
+          schema:
+            type: object
+            properties:
+              msg:
+                type: string
+        404:
+          description: project_id no encontrado
           schema:
             type: object
             properties:
@@ -173,8 +199,6 @@ paths:
       tags:
         - Pedidos
       summary: Obtener los pedidos no asignados de un proyecto
-      description: >
-        Devuelve los pedidos de colaboración no asignados para un proyecto existente.
       parameters:
         - name: project_id
           in: path
@@ -184,27 +208,8 @@ paths:
       responses:
         200:
           description: Lista de pedidos no asignados
-          schema:
-            type: object
-            properties:
-              msg:
-                type: string
-              requests:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id: { type: integer }
-                    type: { type: string }
-                    description: { type: string }
-                    amount: { type: number }
         404:
           description: Proyecto no encontrado
-          schema:
-            type: object
-            properties:
-              msg:
-                type: string
 
   /compromisos/:
     get:
@@ -213,24 +218,6 @@ paths:
       tags:
         - Compromisos
       summary: Listar todos los compromisos registrados
-      responses:
-        200:
-          description: Lista de compromisos
-          schema:
-            type: object
-            properties:
-              msg: { type: string }
-              commitments:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id: { type: integer }
-                    request_id: { type: integer }
-                    ong_name: { type: string }
-                    help_type: { type: string }
-                    fulfilled: { type: boolean }
-
     post:
       security:
         - BearerAuth: []
@@ -243,29 +230,17 @@ paths:
           required: true
           schema:
             type: object
-            required: [request_id, ong_name, help_type]
+            required:
+              - request_id
+              - ong_name
+              - help_type
             properties:
               request_id:
                 type: integer
-                example: 1
               ong_name:
                 type: string
-                example: ONG Esperanza
               help_type:
                 type: string
-                example: Donación de alimentos
-      responses:
-        201:
-          description: Compromiso registrado correctamente
-          schema:
-            type: object
-            properties:
-              msg: { type: string }
-              id: { type: integer }
-        400:
-          description: El pedido ya tiene un compromiso
-        404:
-          description: Pedido no encontrado
 
   /compromisos/{id}/cumplido:
     patch:
@@ -282,12 +257,4 @@ paths:
           example: 1
       responses:
         200:
-          description: Compromiso marcado como cumplido
-          schema:
-            type: object
-            properties:
-              msg: { type: string }
-        400:
-          description: Compromiso ya cumplido
-        404:
-          description: Compromiso no encontrado
+          description: OK
